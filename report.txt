@@ -1,0 +1,33 @@
+Michael Talaga
+Quash Report
+18 October 2021
+
+
+Features:
+
+addToArray - This feature adds elements to a 2d array composed of char* items. The parameters are the array as well as the item. I used this primarily to store different PATHS. For example, if a user were to pass in a path that had multiple paths separated by ":", it would be parsed and each item would use this array to add it to the PATH array.
+
+checkPath - This feature takes in a path and the list of all of the paths as the parameters. It sorts through the list to find a viable path. If one is not present, it will say Executable not found. This is implemented in the execcommands to find a path and is a last resort effort to find a path. It is flawed because the access function does not account for the task it needs to do, and when multiple items are added to the PATH array it may indicate a false positive.
+
+specialcommands - The special commands function is designed to catch certain cases that typically do not have an argument (i.e. exit, quit, cd). It takes in a 2d array of the user command and checks it amongst the cases. This is used before a command is executed to make sure exec is not called on something like quit. Its parameters are the 2d array for the command which is separated by each word, the path array, and the "HOME" variable. The function compares the first element of the command or the first word with an array of the commands that need to be checked like exit.
+
+countOccurences - Count occurences was used to handle special cases. It reads a line and returns the count the string that is being searched for. Its parameters are the command (cmd), checkArray which stores the separated results, and divider which is the separating string. It utilizes the strsep function to try and separate the command by the divider. It is used in Quash to find pipes and I/O redirection operators. It could be used to find other things in the future too.
+
+parse - Parse is practically identical to countOccurences except it just has a different return value. It is only meant to separe a command by a given divider string. It is used anytime there is a char* line that needs to be separated by either an operator or by something like a space.
+
+find - The goal of find is to determine what needs to happen based on a user's input. It calls the count functions that use countOccurence, and is mostly responsible for parsing results. It checks for the special commands, and based on what it finds, it will return an integer to the main function that will help decide if something like execcommands or execPiped needs to occur. This has several paraters which are: the command, char arrays to store parsed values, the current HOME and PATH variables as well as the PATH array, and boolean flags which indicate if there needs to be an redirection.
+
+checkLine - This function takes in a command and returns if it is empty or not.
+
+execCommand - The goal of this function is to execute a command with a child process. It is also responsible for finding the correct path. Once the path is found, the method will load the command onto a buffer to execute the execl command. Additionally, the parent will wait for the child process to finish and uses &status. It is used in the main if the user command meets the function find's qualifications to execute.
+
+execPiped - This function is similar to the one above but makes use of pipes, which means a pipe needs to be created to allow for redirection of STDIN and STDOUT. The first child will execute the first hald of the command which was split by a "|", and the second child would execute the 2nd part. execPiped uses the same functionality to find the correct path as execCommand, and this is something that can be optimized in the future by creating another function.
+
+main - The main function is responsible for reading user input, running it through find, and then determining the action using a simple switch machine. There are several cases that can execute multiple things like "exec" or file redirection. Main implements a while loop that will ensure the user is always given a prompt until they choose to exit. Several variables are defined before the program begins accepting an input like, command, commandArgs (to have separated words or sections), path array and default path, and then boolean flags. The main also has a small presentation that introduces the Quash. 
+
+
+
+
+Quash Testing and Required Features not implemented
+Quash was completely tested using the command line to test commands like "ls", "exit", "cd", or "nano".
+I intend to continue working on this to further develop my skills, and it has not implemented file redirection or file reading. It also lacks printing current jobs. Additionally, many of the existing functions allow for bugs or cases that do not satisfy all requirements. I learned a lot while working on this project and it has certainly improved my skills. I was caught up on parsing for a very long time and tried several solutions to get my exec function working. In the end it was a matter of parsing and not what was occuring in my exec functions. If Ihad to start the project over, it would be a lot faster and the code would be simplified. I would fix the parsing issues at the source rather than dealing with them later.

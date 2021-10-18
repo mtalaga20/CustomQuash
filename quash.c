@@ -16,14 +16,10 @@
 
 //#define PATH "/bin/ls:/bin"
 
-   //TOO= read user input; 
-   //TOD= parse user input; 
-   //TOD= include quit and exit; 
+   
    //TOD= support path and home;
-   //TOD= Get cd working (with and without arguments); 
    //TOD=Jobs prints backgroud processes (keep track of background processes) - [JOBID] PID COMMAND;
    //TOD= I/O redirection;
-   //TOD:Implement pipe command
    //TOD:Implement kill
 
 /* Function to add elements to array
@@ -84,7 +80,7 @@ int specialcommands(char** line, char* HOME, char** PATHS){
 		printf("%s", line[1]);
 		while((separated[j] = strsep(&line[1], "=")) != NULL){
 			j++;}
-		printf("%s|  |%s \n", separated[0], separated[1]);
+		//printf("%s|  |%s \n", separated[0], separated[1]);
 		if (strcmp(separated[0], "HOME") == 0){
 			//system(line[1]);
 			putenv(line[1]);
@@ -93,17 +89,17 @@ int specialcommands(char** line, char* HOME, char** PATHS){
 		}
 		else if(strcmp(separated[0], "PATH") == 0){
 			//path stuff
-			//strcat(PATH, ":");
-			//strcat(separated[1], ":");
 			char* pathCollection[MAX_PATHS];
 			//parse(separated[1], pathCollection, ":"); // put each path in path collection
 			//for(int i=0; i<sizeof(pathCollection); i++){		 
-			//	addToArray(PATHS, pathCollection[i]);
+				//if(pathCollection[i] == NULL){
+				//	break;}	
+				//strtok(pathCollection[i], "\n");		
+				addToArray(PATHS, pathCollection[i]);
 				
 			//}
 			//strcat(PATH, separated[1]);
-			printf("Path to include %s", separated[1]);
-			//printf("%s", PATH);		
+			printf("Path to include %s", separated[1]);	
 		}
 	}
 	
@@ -116,6 +112,10 @@ int specialcommands(char** line, char* HOME, char** PATHS){
 			strtok(line[1], "\n");
 			chdir(line[1]);
 		}
+	}
+	else if (answer == 7 || answer == 8){
+		//kill( ,SIGKILL);
+
 	}
 	else if(answer == 9){ //pwd
 		char cwd[BUF_SIZE];
@@ -145,7 +145,20 @@ void parse(char* sentence, char** newCollection, char* divider){ //consider addi
 
 }
 
+//Validity check for input
+bool checkLine(char* input){
+	
+	if(strlen(input) <= 0){
+		return false;
+	}
+	else{
+		return true;
+	}
+}
+
 int find(char* cmd, char** line, char** pipedcommand, char* HOME, char* PATH, char** PATHS, bool changeOUT, bool changeIN){
+	if (checkLine(cmd) == false){return 99;}
+
 	//check for <, >, |
 	int checkIn = countOccurences(cmd, pipedcommand, "<");
 	int checkOut = countOccurences(cmd, pipedcommand, ">");	
@@ -172,25 +185,13 @@ int find(char* cmd, char** line, char** pipedcommand, char* HOME, char* PATH, ch
 			return 0; //return to execute command
 		} 
 		else {
-			return 5; //to get new input
+			return 99; //to get new input
 		}	
-	
-	
 	}
-	//return 0;
 }
 
 
-//Validity check for input
-bool checkLine(char* input){
-	
-	if(strlen(input) <= 0){
-		return false;
-	}
-	else{
-		return true;
-	}
-}
+
 
 
 void execCommand(char** command, char* PATH, char**PATHS, bool changeOUT, char* file){
@@ -228,7 +229,7 @@ void execCommand(char** command, char* PATH, char**PATHS, bool changeOUT, char* 
 	//printf("%ld - %s - %s", sizeof(command), command[0], command[1]);
 
 	if(command[1] != NULL){ //Ensure not reading from file
-		for(int i=0; i< sizeof(command); i++){
+		for(int i=1; i< sizeof(command); i++){
 			if(command[i] == NULL){break;}
 			else{
 				strcat(buf, command[i]);
@@ -282,16 +283,16 @@ void execCommand(char** command, char* PATH, char**PATHS, bool changeOUT, char* 
 int execPiped(char** commandPiped, char* PATH, char**PATHS, bool changeOUT, bool changeIN){
 	char* first_section[MAX_LINE]; char* second_section[MAX_LINE];
 	int status;
-	//strcpy(first_section, commandPiped[0]); strcpy(second_section, commandPiped[1]);
+	//Parse each section of pipe command
 	parse(commandPiped[0], first_section, " "); parse(commandPiped[1], second_section, " ");
-	//For 1st line
+	//For 1st section - PATHS
 	char executePATH[MAX_PATHS]; //execute path so executing DN permanently change path
 	char finalPATH[MAX_PATHS];	
 	strcpy(executePATH, PATH);
 	strcat(executePATH, first_section[0]);
 	strtok(executePATH, "\n");  //Remove \n
 	addToArray(PATHS, executePATH);
-		
+	//2nd section PATHS
 	char executePATHTWO[MAX_PATHS]; //execute path so executing DN permanently change path
 	char finalPATHTWO[MAX_PATHS];	
 	strcpy(executePATHTWO, PATH);
@@ -361,7 +362,7 @@ int execPiped(char** commandPiped, char* PATH, char**PATHS, bool changeOUT, bool
 			close(p1[1]);
 			
 			if (execl(finalPATH, buf, NULL) < 0){
-				printf("Error Executing\n");
+				printf("Error Executing1\n");
 				exit(0);
 			}
 			
@@ -377,7 +378,7 @@ int execPiped(char** commandPiped, char* PATH, char**PATHS, bool changeOUT, bool
 			close(p1[0]);
 
 			if (execl(finalPATHTWO, bufTWO, NULL) < 0){
-				printf("Error Executing\n");
+				printf("Error Executing2\n");
 				exit(0);
 			}
 			
@@ -428,7 +429,7 @@ int main(int argc, char **argv, char **envp){
  size_t rsize;
  bool read = false;
  
-while(1){
+while(true){
 	getcwd(cwd, sizeof(cwd));
 	printf("\n%s $", cwd);
 	//fflush(stdout);	
@@ -449,61 +450,38 @@ while(1){
 
 	}
 
-	if (checkLine(command) == true){
-			
-
-		//determine if there is a pipe
-		int numberOfPipes = find(command, commandArgs, pipedcommand, HOME, paths, all_paths, changeOUT, changeIN);
-		switch(numberOfPipes){
-			case 0: //Regular command (with and wthout args)
-				//printf("PATH:%s / path %s", paths, bin);
-				//printf("\n%s", paths);
-				//if(! changeOUT){printf("CHANGEOUT", changeOUT);}
-				execCommand(commandArgs, paths, all_paths, changeOUT, NULL);
-				break;
-			//printf("%s", pipedcommand[0]);
-			
-			//Command with single pipe
-			case 1: 
-				execPiped(pipedcommand, paths, all_paths, changeOUT, changeIN);
-				break;
-
-			//Command with > 
-			case 2: 
-				changeOUT = true;
-				parse(pipedcommand[0], first_half, " ");
-				strtok(pipedcommand[1], "\n");
-				execCommand(first_half, paths, all_paths, changeOUT, pipedcommand[1]);
-				break;
-
-			//Command with <			
-			case -1: 
-				execCommand(commandArgs, paths, all_paths, changeOUT, "testy.txt");
-				break;
-			//default:
-				//printf("Invalid");
-		}
-	} 
-	//parse input
-	//fork child to execute
 	
-	sleep(2);
+			
 
+	//determine if there is a pipe
+	int numberOfPipes = find(command, commandArgs, pipedcommand, HOME, paths, all_paths, changeOUT, changeIN);
+	switch(numberOfPipes){
+		case 0: //Regular command (with and wthout args)
+			//printf("PATH:%s / path %s", paths, bin);
+			//printf("\n%s", paths);
+			//if(! changeOUT){printf("CHANGEOUT", changeOUT);}
+			execCommand(commandArgs, paths, all_paths, changeOUT, NULL);
+			break;
+		//printf("%s", pipedcommand[0]);		
+		//Command with single pipe
+		case 1: 
+			execPiped(pipedcommand, paths, all_paths, changeOUT, changeIN);
+			break;
+
+		//Command with > 
+		case 2: 
+			changeOUT = true;
+			parse(pipedcommand[0], first_half, " ");
+			strtok(pipedcommand[1], "\n");
+			execCommand(first_half, paths, all_paths, changeOUT, pipedcommand[1]);
+			break;
+
+		//Command with <			
+		case -1: 
+			execCommand(commandArgs, paths, all_paths, changeOUT, "testy.txt");
+			break;
+	}
   	}
 return 0;
 }
 
-
-
-/*
-if(changeIN){
-				int rfd;
-				size_t rsize;
-				if (rfd = open(file, O_RDONLY) >= 0){
-					while((rsize = read(rfd, buf, BUF_SIZE)) > 0){
-						write(STDOUT_FILENO, buf, rsize);
-						return;
-					}
-				}//else
-			}
-*/
