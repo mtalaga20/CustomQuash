@@ -1,29 +1,23 @@
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdbool.h>
+
+#include <stdio.h> //I/O
+#include <stdlib.h> //exit
+#include <unistd.h> 
+#include <string.h> //str handling for parsing
+#include <stdbool.h> //Simple bools
 #include <errno.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <signal.h>
+#include <sys/wait.h> //Parent process waiting
+#include <fcntl.h> //reading/writing with files
+
 
 
 #define BUF_SIZE 512
 #define MAX_LINE 100
 #define MAX_PATHS 50
 
-//#define PATH "/bin/ls:/bin"
 
-   
-   //TOD= support path and home;
-   //TOD=Jobs prints backgroud processes (keep track of background processes) - [JOBID] PID COMMAND;
-   //TOD= I/O redirection;
-   //TOD:Implement kill
 
 /* Function to add elements to array
-param: charArray is an array of words or path items, item is a word or specific path
 */
 void addToArray(char** charArray, char* item){
 	for(int i=0; i<sizeof(charArray); i++){
@@ -34,11 +28,11 @@ void addToArray(char** charArray, char* item){
 	}
 }
 
+/* Function to check PATH array
+*/
 bool checkPath(char* PATH, char** PATH_LIST){
 	for (int i=0; i<sizeof(PATH_LIST); i++){ //Checking if path is in path array
 		if(access(PATH_LIST[i], F_OK) == 0){		
-		//if(access(executePATH, F_OK) != 0){
-			//printf("Executable not found");
 			strcpy(PATH, PATH_LIST[i]);		
 			return true;}
 		else{
@@ -49,6 +43,8 @@ bool checkPath(char* PATH, char** PATH_LIST){
 
 }
 
+/* Handles and executes special commands
+*/
 int specialcommands(char** line, char* HOME, char** PATHS){
 	//char* checker;
 	char* sc[11];
@@ -70,7 +66,6 @@ int specialcommands(char** line, char* HOME, char** PATHS){
 	}
 	
 	if (answer == 0 || answer == 1){ //exit and quit
-		//printf("Answer for ya %d", answer);
 		printf("Exiting...\n");
 		exit(0);
 		}
@@ -80,7 +75,7 @@ int specialcommands(char** line, char* HOME, char** PATHS){
 		printf("%s", line[1]);
 		while((separated[j] = strsep(&line[1], "=")) != NULL){
 			j++;}
-		//printf("%s|  |%s \n", separated[0], separated[1]);
+	
 		if (strcmp(separated[0], "HOME") == 0){
 			//system(line[1]);
 			putenv(line[1]);
@@ -126,6 +121,8 @@ int specialcommands(char** line, char* HOME, char** PATHS){
 	return answer;
 }
 
+/* Counts # of occurences of a specified char*
+*/
 int countOccurences(char* cmd, char** checkArray, char* divider){
 	int i = 0;
 	int countOfOccurences = 0; //returns int of separated sections	
@@ -137,6 +134,9 @@ int countOccurences(char* cmd, char** checkArray, char* divider){
 	return (countOfOccurences - 1);
 }
 
+
+/* Parse a sentence into an array split by a specified divider
+*/
 void parse(char* sentence, char** newCollection, char* divider){ //consider adding char
 	int i = 0;	
 	while((newCollection[i] = strsep(&sentence, divider)) != NULL){
@@ -156,6 +156,8 @@ bool checkLine(char* input){
 	}
 }
 
+/* Organization to find quash related operators like pipe or <>
+*/
 int find(char* cmd, char** line, char** pipedcommand, char* HOME, char* PATH, char** PATHS, bool changeOUT, bool changeIN){
 	if (checkLine(cmd) == false){return 99;}
 
@@ -181,9 +183,12 @@ int find(char* cmd, char** line, char** pipedcommand, char* HOME, char* PATH, ch
 		//check for set/home/cd
 		int special = specialcommands(line, HOME, PATHS);
 		//printf("Special %d", special);
-		if ((special == -1)){
+		if ((special == -1)){ //-1 returned if command was not found in special
 			return 0; //return to execute command
 		} 
+		else if ((special == 2 || special == 3)){
+			return 3;
+		}
 		else {
 			return 99; //to get new input
 		}	
@@ -193,7 +198,8 @@ int find(char* cmd, char** line, char** pipedcommand, char* HOME, char* PATH, ch
 
 
 
-
+/* Execute command with and without args
+*/
 void execCommand(char** command, char* PATH, char**PATHS, bool changeOUT, char* file){
 	
 	int status;
@@ -218,10 +224,6 @@ void execCommand(char** command, char* PATH, char**PATHS, bool changeOUT, char* 
 	else if(checkPath(finalPATH, PATHS)){
 		foundPATH = true;
 	}
-		
-	
-	
-	//}
 
 	char buf[BUF_SIZE];
 	bzero(buf, BUF_SIZE);
@@ -265,7 +267,7 @@ void execCommand(char** command, char* PATH, char**PATHS, bool changeOUT, char* 
 			
 			//printf("|%s|%s|", finalPATH, buf);
 			if (execl(finalPATH, buf, NULL) < 0){
-				printf("Error Executing\n");
+				printf("Error Executing");
 				
 				exit(0);
 			}
@@ -279,7 +281,8 @@ void execCommand(char** command, char* PATH, char**PATHS, bool changeOUT, char* 
 	}	
 }
 
-
+/* Execute piped command
+*/
 int execPiped(char** commandPiped, char* PATH, char**PATHS, bool changeOUT, bool changeIN){
 	char* first_section[MAX_LINE]; char* second_section[MAX_LINE];
 	int status;
@@ -399,6 +402,45 @@ int execPiped(char** commandPiped, char* PATH, char**PATHS, bool changeOUT, bool
 	else{printf("PATH not found.\n");}
 }
 
+/* Implements certain functions based on what was found in the user command or file
+*/
+int Exec(char* cmd, char** line, char** pipedcommand, char* PATH, char** all_paths, bool changeOUT, bool changeIN, int indicator, char** first_half){
+	char* bgcommand[4];	
+	switch(indicator){
+		case 0: //Regular command (with and wthout args)
+			//printf("PATH:%s / path %s", paths, bin);
+			//printf("\n%s", paths);
+			//if(! changeOUT){printf("CHANGEOUT", changeOUT);}
+			execCommand(line, PATH, all_paths, changeOUT, NULL);
+			break;		
+		//Command with single pipe
+		case 1: 
+			execPiped(pipedcommand, PATH, all_paths, changeOUT, changeIN);
+			break;
+
+		//Command with > 
+		case 2: 
+			changeOUT = true;
+			parse(pipedcommand[0], first_half, " ");
+			strtok(pipedcommand[1], "\n");
+			execCommand(first_half, PATH, all_paths, changeOUT, pipedcommand[1]);
+			break;
+		//Background/foreground processes
+		case 3:
+			bgcommand[0] = "bg"; bgcommand[1] = " %"; bgcommand[2] = " 1"; bgcommand[2] = NULL;
+			execCommand(bgcommand, PATH, all_paths, false, NULL);
+		//Command with <			
+		case -1: 
+			changeIN = true;			
+			//execCommand(line, PATH, all_paths, changeOUT, "testy.txt");
+			return -1;
+	}
+
+
+
+
+}
+
 
 int main(int argc, char **argv, char **envp){
 
@@ -425,9 +467,9 @@ int main(int argc, char **argv, char **envp){
 
  printf("Username: %s", user);
 
- int rfd; //Used for file input
- size_t rsize;
- bool read = false;
+ char file[MAX_LINE]; //Used for file input
+ //size_t rsize;
+ //bool read = false;
  
 while(true){
 	getcwd(cwd, sizeof(cwd));
@@ -436,52 +478,24 @@ while(true){
 	//read input
 	if(!changeIN){
 		fgets(command, MAX_LINE, stdin);
+		int numberOfPipes = find(command, commandArgs, pipedcommand, HOME, paths, all_paths, changeOUT, changeIN);
+		Exec(command, commandArgs, pipedcommand, paths, all_paths, changeOUT, changeIN, numberOfPipes, first_half);
+		if (numberOfPipes == -1){changeIN = true;}
 	}
 	else{ //Code for < alterations. Would read each line in file and run it through the switch below
-		if(!read){
-			if (rfd = open("test.txt", O_RDONLY) >= 0){
-				
-			}
-			else{printf("Error redirecting file\n");}
-			
+		//if(!read){
+		FILE *rfd = fopen("test.txt", "r");
+		//read = true;	
+		while(fgets(command, MAX_LINE, rfd) != NULL){
+			int read_case = find(command, commandArgs, pipedcommand, HOME, paths, all_paths, changeOUT, changeIN);
+			Exec(command, commandArgs, pipedcommand, paths, all_paths, changeOUT, changeIN, read_case, first_half);
+					
 		}
-
-
-
-	}
-
-	
-			
-
-	//determine if there is a pipe
-	int numberOfPipes = find(command, commandArgs, pipedcommand, HOME, paths, all_paths, changeOUT, changeIN);
-	switch(numberOfPipes){
-		case 0: //Regular command (with and wthout args)
-			//printf("PATH:%s / path %s", paths, bin);
-			//printf("\n%s", paths);
-			//if(! changeOUT){printf("CHANGEOUT", changeOUT);}
-			execCommand(commandArgs, paths, all_paths, changeOUT, NULL);
-			break;
-		//printf("%s", pipedcommand[0]);		
-		//Command with single pipe
-		case 1: 
-			execPiped(pipedcommand, paths, all_paths, changeOUT, changeIN);
-			break;
-
-		//Command with > 
-		case 2: 
-			changeOUT = true;
-			parse(pipedcommand[0], first_half, " ");
-			strtok(pipedcommand[1], "\n");
-			execCommand(first_half, paths, all_paths, changeOUT, pipedcommand[1]);
-			break;
-
-		//Command with <			
-		case -1: 
-			execCommand(commandArgs, paths, all_paths, changeOUT, "testy.txt");
-			break;
-	}
+		fclose(rfd);
+		changeIN = false;
+		
+	}		
+		//else{printf("Error finding file\n");}	
   	}
 return 0;
 }
-
